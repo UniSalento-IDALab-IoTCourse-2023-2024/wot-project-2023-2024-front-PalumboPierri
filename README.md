@@ -45,7 +45,6 @@ Il progetto è composto da tre pagine principali:
 - **Tailwind CSS**: Utilizzato per una rapida e flessibile gestione degli stili.
 - **Chart.js**: Libreria per creare grafici dinamici.
 - **JavaScript**: Usato per la logica dell'applicazione e la gestione del caricamento e analisi audio.
-- **Python (Backend)**: Per eseguire analisi audio avanzate (non visibile dal frontend).
 - **FileReader API**: Usato per caricare e leggere i file audio nel browser.
 - **Web Audio API**: Per l'analisi dell'audio (calcolo RMS, decibel e spettro delle frequenze).
 
