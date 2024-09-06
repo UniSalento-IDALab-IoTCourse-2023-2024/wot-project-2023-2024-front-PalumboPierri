@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grafici con Tailwind e Chart.js</title>
+    <!-- Includi Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Includi Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="h-screen bg-gray-200 flex flex-col items-center justify-center">
+
+    <!-- Topbar -->
+    <div class="fixed top-0 left-0 w-full bg-gray-800 text-white flex items-center justify-between px-5 py-4 shadow-md z-50">
+        <h2 class="text-xl font-semibold truncate">Monitoraggio Rumore e Beacon</h2>
+        <button onclick="goToSuono()" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded transition duration-300">
+            Analizza Suono
+        </button>
+        <button onclick="goToHome()" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded transition duration-300">Vai alla Home</button>
+        
+        <!-- Aggiungi il nuovo pulsante per eseguire il codice Python -->
+        <button id="eseguiPython" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded transition duration-300">
+            Esegui Analisi Audio
+        </button>
+    </div>
+
+    <!-- Container per i grafici -->
+    <div class="container mx-auto mt-40 pb-20 px-4 flex space-x-16 items-center justify-center pt-6">
+        
+        <!-- Grafico a Torta -->
+        <div class="max-w-lg w-full bg-white p-8 rounded-lg shadow-lg">
+            <h1 class="text-2xl font-bold mb-6 text-center">Grafico a Torta</h1>
+            <canvas id="myPieChart"></canvas>
+        </div>
+
+        <!-- Istogramma -->
+        <div class="max-w-lg w-full bg-white p-8 rounded-lg shadow-lg">
+            <h1 class="text-2xl font-bold mb-6 text-center">Istogramma</h1>
+            <canvas id="myBarChart"></canvas>
+        </div>
+
+    </div>
+
+    <script>
+        // Funzione per navigare alla home
+        function goToHome() {
+            window.location.href = '/';
+        }
+        function goToSuono() {
+            window.location.href = '/analizzasuono';
+        }
+
+        document.getElementById('eseguiPython').addEventListener('click', function() {
+            fetch('/esegui-codice-python', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ comando: 'esegui' })
+            })
+            .then(response => response.json())
+            .then(data => alert('Risultato: ' + data.output))
+            .catch(error => console.error('Errore:', error));
+        });
+
+        // Recupera i dati per i grafici
+        fetch('/chart-data')
+            .then(response => response.json())
+            .then(data => {
+                const labels = data.labels;
+                const chartData = data.data;
+
+                // Configurazione del grafico a torta
+                const pieCtx = document.getElementById('myPieChart').getContext('2d');
+                const myPieChart = new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Eventi',
+                            data: chartData,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',  // Colori personalizzati
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)',
+                                'rgba(201, 203, 207, 0.7)',
+                                'rgba(255, 99, 71, 0.7)',
+                                'rgba(123, 239, 178, 0.7)',
+                                'rgba(135, 206, 235, 0.7)',
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)',
+                                'rgba(201, 203, 207, 1)',
+                                'rgba(255, 99, 71, 1)',
+                                'rgba(123, 239, 178, 1)',
+                                'rgba(135, 206, 235, 1)',
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribuzione Eventi per Categoria'
+                            }
+                        }
+                    },
+                });
+
+                // Configurazione dell'istogramma
+                const barCtx = document.getElementById('myBarChart').getContext('2d');
+                const myBarChart = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Frequenza',
+                            data: chartData,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',  // Colori personalizzati
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)',
+                                'rgba(201, 203, 207, 0.7)',
+                                'rgba(255, 99, 71, 0.7)',
+                                'rgba(123, 239, 178, 0.7)',
+                                'rgba(135, 206, 235, 0.7)',
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)',
+                                'rgba(201, 203, 207, 1)',
+                                'rgba(255, 99, 71, 1)',
+                                'rgba(123, 239, 178, 1)',
+                                'rgba(135, 206, 235, 1)',
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Frequenza degli Eventi per Categoria'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    },
+                });
+            })
+            .catch(error => console.error('Errore nel recuperare i dati per i grafici:', error));
+    </script>
+
+</body>
+</html>

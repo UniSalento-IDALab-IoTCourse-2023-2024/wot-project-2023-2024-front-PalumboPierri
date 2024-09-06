@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizza Audio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #frequencyChart {
+            width: 80vw;  /* 80% della larghezza della finestra del browser */
+            height: 500px; /* Altezza fissa di 500px */
+        }
+    </style>
+</head>
+<body class="h-screen bg-gray-200 flex flex-col items-center justify-center">
+    <!-- Topbar -->
+    <div class="fixed top-0 left-0 w-full bg-gray-800 text-white flex items-center justify-between px-5 py-4 shadow-md z-50">
+        <h2 class="text-xl font-semibold truncate">Analizza Audio</h2>
+        <button onclick="goToDashboard()" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded transition duration-300">Vai alla Dashboard</button>
+        <button onclick="goToHome()" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded transition duration-300">Vai alla Home</button>
+    </div>
+
+    <!-- Container per il caricamento e l'analisi dell'audio -->
+    <div class="mt-24 flex flex-col items-center">
+        <input type="file" id="audioFile" accept="audio/*" class="mb-4 p-2 border border-gray-300 rounded">
+        <button id="analyzeBtn" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded transition duration-300">Analizza Suono</button>
+        
+        <!-- Risultato dell'analisi -->
+        <div id="result" class="mt-6 text-xl font-bold"></div>
+
+        <!-- Grafico dello spettro di frequenza -->
+        <div class="w-full max-w-4xl mt-8">
+            <canvas id="frequencyChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let frequencyChart = null;
+        let animationFrameId = null;
+
+        function goToHome() {
+            window.location.href = '/';
+        }
+        function goToDashboard() {
+            window.location.href = '/dashboard';
+        }
+
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            const fileInput = document.getElementById('audioFile');
+            const resultDiv = document.getElementById('result');
+            const ctx = document.getElementById('frequencyChart').getContext('2d');
+
+            if (fileInput.files.length === 0) {
+                resultDiv.textContent = 'Per favore, carica un file audio prima di procedere.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioContext.decodeAudioData(event.target.result, function(buffer) {
+                    const data = buffer.getChannelData(0);
+
+                    // Calcolo RMS e decibel
+                    const rms = Math.sqrt(data.reduce((sum, value) => sum + value * value, 0) / data.length);
+                    const decibel = 20 * Math.log10(rms);
+
+                    if (decibel > 85) {
+                        resultDiv.textContent = `Suono pericoloso: ${decibel.toFixed(2)} dB`;
+                        resultDiv.className = "mt-6 text-xl font-bold text-red-600";
+                    } else {
+                        resultDiv.textContent = `Livello di rumore: ${decibel.toFixed(2)} dB. Sicuro.`;
+                        resultDiv.className = "mt-6 text-xl font-bold text-green-600";
+                    }
+
+                    const fftSize = 2048;
+                    const analyser = audioContext.createAnalyser();
+                    analyser.fftSize = fftSize;
+                    const frequencyData = new Float32Array(analyser.frequencyBinCount);
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(analyser);
+                    analyser.connect(audioContext.destination);
+                    source.start();
+
+                    // Se esiste un grafico, distruggilo prima di crearne uno nuovo
+                    if (frequencyChart) {
+                        frequencyChart.destroy();
+                    }
+
+                    // Creazione del grafico di ampiezza-frequenza
+                    const labels = Array.from({ length: analyser.frequencyBinCount }, (v, i) => i * audioContext.sampleRate / analyser.fftSize);
+                    frequencyChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Ampiezza vs Frequenza',
+                                data: frequencyData,
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    min: 0,  // Frequenza minima visualizzata
+                                    max: audioContext.sampleRate / 2,  // Frequenza massima visualizzata (Nyquist limit)
+                                    title: {
+                                        display: true,
+                                        text: 'Frequenza (Hz)'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Ampiezza'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Funzione per aggiornare il grafico in tempo reale
+                    function updateFrequencyData() {
+                        analyser.getFloatFrequencyData(frequencyData);
+
+                        const normalizedFrequencyData = frequencyData.map(value => value < -160 ? -160 : value);
+                        frequencyChart.data.datasets[0].data = normalizedFrequencyData;
+                        frequencyChart.update();
+
+                        animationFrameId = requestAnimationFrame(updateFrequencyData);
+                    }
+
+                    updateFrequencyData(); // Avvia l'aggiornamento continuo del grafico
+
+                    // Gestione della fine della riproduzione
+                    source.onended = () => {
+                        cancelAnimationFrame(animationFrameId);
+                        analyser.getFloatFrequencyData(frequencyData);
+                        frequencyChart.data.datasets[0].data = frequencyData.map(value => value < -160 ? -160 : value);
+                        frequencyChart.update();
+                    };
+                });
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>
